@@ -1,0 +1,240 @@
+package com.example.playerdemo.data.repository;
+
+import com.example.playerdemo.data.model.SubtitleEntry;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class AutoCutManager {
+    private static AutoCutManager instance;
+    private final SshManager sshManager;
+    private static final Pattern PROGRESS_PATTERN = Pattern.compile("(\\d+)%");
+    private static final Pattern FRAME_PATTERN = Pattern.compile("frame=(\\d+)");
+    private static final Pattern TIME_PATTERN = Pattern.compile("time=(\\d{2}):(\\d{2}):(\\d{2})");
+
+    private AutoCutManager() {
+        this.sshManager = SshManager.getInstance();
+    }
+
+    public static synchronized AutoCutManager getInstance() {
+        if (instance == null) {
+            instance = new AutoCutManager();
+        }
+        return instance;
+    }
+
+    public interface RecognitionCallback {
+        void onProgress(int progress, String message);
+        void onSuccess(String mdFilePath);
+        void onFailure(String error);
+    }
+
+    public interface CutCallback {
+        void onProgress(int progress, String message);
+        void onSuccess(String outputPath);
+        void onFailure(String error);
+    }
+
+    public void recognizeSubtitles(String videoPath, String outputPath, RecognitionCallback callback) {
+        String command = String.format(
+            "wsl -d Ubuntu-22.04 autocut -t \"%s\" -o \"%s\"",
+            videoPath,
+            outputPath
+        );
+
+        final int[] lastProgress = {0};
+        
+        sshManager.executeCommand(command, new SshManager.CommandCallback() {
+            @Override
+            public void onOutput(String line) {
+                int progress = parseProgress(line, lastProgress[0]);
+                if (progress > 0) {
+                    lastProgress[0] = progress;
+                }
+                
+                if (callback != null) {
+                    callback.onProgress(progress, line);
+                }
+            }
+
+            @Override
+            public void onComplete(int exitCode) {
+                if (exitCode == 0) {
+                    if (callback != null) {
+                        callback.onSuccess(outputPath);
+                    }
+                } else {
+                    if (callback != null) {
+                        callback.onFailure("字幕识别失败，退出码: " + exitCode);
+                    }
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (callback != null) {
+                    callback.onFailure("字幕识别出错: " + error);
+                }
+            }
+        });
+    }
+
+    public void cutVideo(String videoPath, String mdPath, String outputPath, CutCallback callback) {
+        String command = String.format(
+            "wsl -d Ubuntu-22.04 autocut -c \"%s\" -s \"%s\" -o \"%s\"",
+            videoPath,
+            mdPath,
+            outputPath
+        );
+
+        final int[] lastProgress = {0};
+        
+        sshManager.executeCommand(command, new SshManager.CommandCallback() {
+            @Override
+            public void onOutput(String line) {
+                int progress = parseCutProgress(line, lastProgress[0]);
+                if (progress > 0) {
+                    lastProgress[0] = progress;
+                }
+                
+                if (callback != null) {
+                    callback.onProgress(progress, line);
+                }
+            }
+
+            @Override
+            public void onComplete(int exitCode) {
+                if (exitCode == 0) {
+                    if (callback != null) {
+                        callback.onSuccess(outputPath);
+                    }
+                } else {
+                    if (callback != null) {
+                        callback.onFailure("视频剪辑失败，退出码: " + exitCode);
+                    }
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (callback != null) {
+                    callback.onFailure("视频剪辑出错: " + error);
+                }
+            }
+        });
+    }
+
+    public void cancelOperation() {
+        sshManager.executeCommand("pkill -f autocut", new SshManager.CommandCallback() {
+            @Override
+            public void onOutput(String line) {}
+
+            @Override
+            public void onComplete(int exitCode) {}
+
+            @Override
+            public void onError(String error) {}
+        });
+    }
+
+    public List<SubtitleEntry> parseMdFile(String mdContent) {
+        List<SubtitleEntry> entries = new ArrayList<>();
+        if (mdContent == null || mdContent.isEmpty()) {
+            return entries;
+        }
+
+        String[] blocks = mdContent.split("\n\n");
+        Pattern timePattern = Pattern.compile(
+            "(\\d{2}:\\d{2}:\\d{2}\\.\\d{3})\\s*-->\\s*(\\d{2}:\\d{2}:\\d{2}\\.\\d{3})"
+        );
+
+        int index = 0;
+        for (String block : blocks) {
+            String trimmed = block.trim();
+            if (trimmed.isEmpty()) continue;
+
+            Matcher matcher = timePattern.matcher(trimmed);
+            if (matcher.find()) {
+                String startTime = matcher.group(1);
+                String endTime = matcher.group(2);
+                String content = trimmed.replaceAll(timePattern.pattern(), "").trim();
+
+                entries.add(new SubtitleEntry(
+                    String.valueOf(index + 1),
+                    startTime,
+                    endTime,
+                    content,
+                    true,
+                    index
+                ));
+                index++;
+            }
+        }
+
+        return entries;
+    }
+
+    public String generateMdFile(List<SubtitleEntry> entries) {
+        StringBuilder sb = new StringBuilder();
+        
+        for (SubtitleEntry entry : entries) {
+            if (entry.isKept()) {
+                sb.append(entry.getStartTime()).append(" --> ").append(entry.getEndTime()).append("\n");
+                sb.append(entry.getContent()).append("\n\n");
+            }
+        }
+        
+        return sb.toString();
+    }
+
+    private int parseProgress(String line, int lastProgress) {
+        if (line == null) return lastProgress;
+        
+        Matcher progressMatcher = PROGRESS_PATTERN.matcher(line);
+        if (progressMatcher.find()) {
+            return Integer.parseInt(progressMatcher.group(1));
+        }
+        
+        if (line.contains("progress")) {
+            String[] parts = line.split("progress");
+            for (String part : parts) {
+                if (part.contains(":")) {
+                    String numStr = part.replaceAll("[^0-9]", "").trim();
+                    if (!numStr.isEmpty()) {
+                        try {
+                            return Integer.parseInt(numStr);
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
+            }
+        }
+        
+        if (line.contains("Recognizing") || line.contains("识别")) {
+            return Math.min(lastProgress + 5, 90);
+        }
+        
+        return lastProgress;
+    }
+
+    private int parseCutProgress(String line, int lastProgress) {
+        if (line == null) return lastProgress;
+        
+        Matcher frameMatcher = FRAME_PATTERN.matcher(line);
+        if (frameMatcher.find()) {
+            return Math.min(lastProgress + 3, 95);
+        }
+        
+        Matcher timeMatcher = TIME_PATTERN.matcher(line);
+        if (timeMatcher.find()) {
+            return Math.min(lastProgress + 2, 95);
+        }
+        
+        if (line.contains("Encoding") || line.contains("编码")) {
+            return Math.min(lastProgress + 5, 90);
+        }
+        
+        return lastProgress;
+    }
+}
