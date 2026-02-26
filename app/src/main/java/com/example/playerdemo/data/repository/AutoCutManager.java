@@ -39,34 +39,41 @@ public class AutoCutManager {
 
     public void recognizeSubtitles(String videoPath, String outputPath, RecognitionCallback callback) {
         String wslVideoPath = VideoManager.convertToWslPath(videoPath);
-
-//        String wslOutputPath = VideoManager.convertToWslPath(outputPath);
         
         String command = String.format(
-            "wsl -d Ubuntu-22.04 autocut -t \"%s\" --device cuda --whisper-model large-v3-turbo",
+            "wsl -d Ubuntu2204 autocut -t %s --device cuda --whisper-model large-v3-turbo",
             wslVideoPath
         );
 
         final int[] lastProgress = {0};
+        final boolean[] success = {false};
         
         sshManager.executeCommand(command, new SshManager.CommandCallback() {
             @Override
             public void onOutput(String line) {
+                if (line != null && (line.contains("Saved texts to") || line.contains("Transcribed"))) {
+                    success[0] = true;
+                }
+                
                 int progress = parseProgress(line, lastProgress[0]);
                 if (progress > 0) {
                     lastProgress[0] = progress;
+                } else if (line != null && line.contains("Done transcription")) {
+                    lastProgress[0] = 90;
                 }
                 
                 if (callback != null) {
-                    callback.onProgress(progress, line);
+                    callback.onProgress(lastProgress[0], line);
                 }
             }
 
             @Override
             public void onComplete(int exitCode) {
-                if (exitCode == 0) {
+                String mdPath = VideoManager.convertToWslPath(getMdPathFromVideoPath(videoPath));
+                
+                if (success[0] || exitCode == 0) {
                     if (callback != null) {
-                        callback.onSuccess(outputPath);
+                        callback.onSuccess(mdPath);
                     }
                 } else {
                     if (callback != null) {
@@ -83,6 +90,21 @@ public class AutoCutManager {
             }
         });
     }
+    
+    private String getMdPathFromVideoPath(String videoPath) {
+        if (videoPath == null || videoPath.isEmpty()) {
+            return "";
+        }
+        if (videoPath.startsWith("/")) {
+            videoPath = videoPath.substring(1);
+        }
+
+        int lastDot = videoPath.lastIndexOf('.');
+        if (lastDot > 0) {
+            return videoPath.substring(0, lastDot) + ".md";
+        }
+        return videoPath + ".md";
+    }
 
     public void cutVideo(String videoPath, String mdPath, String outputPath, CutCallback callback) {
         String wslVideoPath = VideoManager.convertToWslPath(videoPath);
@@ -90,7 +112,7 @@ public class AutoCutManager {
         String wslOutputPath = VideoManager.convertToWslPath(outputPath);
         
         String command = String.format(
-            "wsl -d Ubuntu-22.04 autocut -c \"%s\" -s \"%s\" -o \"%s\"",
+            "wsl -d Ubuntu2204 autocut -c \"%s\" -s \"%s\" -o \"%s\"",
             wslVideoPath,
             wslMdPath,
             wslOutputPath
@@ -199,15 +221,25 @@ public class AutoCutManager {
     private int parseProgress(String line, int lastProgress) {
         if (line == null) return lastProgress;
         
+        if (line.contains("Init model")) {
+            return 5;
+        }
+        if (line.contains("Transcribing") || line.contains("voice activity detection")) {
+            return Math.min(lastProgress + 10, 50);
+        }
+        if (line.contains("transcription")) {
+            return Math.min(lastProgress + 30, 80);
+        }
+        
         Matcher progressMatcher = PROGRESS_PATTERN.matcher(line);
         if (progressMatcher.find()) {
             return Integer.parseInt(progressMatcher.group(1));
         }
         
-        if (line.contains("progress")) {
-            String[] parts = line.split("progress");
+        if (line.contains("%")) {
+            String[] parts = line.split("%");
             for (String part : parts) {
-                if (part.contains(":")) {
+                if (part.contains("|")) {
                     String numStr = part.replaceAll("[^0-9]", "").trim();
                     if (!numStr.isEmpty()) {
                         try {
@@ -216,10 +248,6 @@ public class AutoCutManager {
                     }
                 }
             }
-        }
-        
-        if (line.contains("Recognizing") || line.contains("识别")) {
-            return Math.min(lastProgress + 5, 90);
         }
         
         return lastProgress;

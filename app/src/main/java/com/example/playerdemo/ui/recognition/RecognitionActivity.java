@@ -8,9 +8,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.playerdemo.data.model.WslConfig;
 import com.example.playerdemo.data.repository.AutoCutManager;
-import com.example.playerdemo.data.repository.ConfigManager;
 import com.example.playerdemo.data.repository.SshManager;
 import com.example.playerdemo.databinding.ActivityRecognitionBinding;
 import com.example.playerdemo.ui.editor.MdEditorActivity;
@@ -19,11 +17,9 @@ public class RecognitionActivity extends AppCompatActivity {
     private ActivityRecognitionBinding binding;
     private SshManager sshManager;
     private AutoCutManager autoCutManager;
-    private ConfigManager configManager;
     
     private String videoPath;
     private String videoName;
-    private String mdOutputPath;
     private boolean isRecognizing = false;
 
     @Override
@@ -34,7 +30,6 @@ public class RecognitionActivity extends AppCompatActivity {
 
         sshManager = SshManager.getInstance();
         autoCutManager = AutoCutManager.getInstance();
-        configManager = ConfigManager.getInstance(this);
 
         videoPath = getIntent().getStringExtra("video_path");
         videoName = getIntent().getStringExtra("video_name");
@@ -64,16 +59,10 @@ public class RecognitionActivity extends AppCompatActivity {
         isRecognizing = true;
         updateUIState(true);
         
-        WslConfig config = configManager.getWslConfig();
-        String videoDir = config.getVideoPath();
-        String baseName = videoName.substring(0, videoName.lastIndexOf('.'));
-        mdOutputPath = videoDir + "/" + baseName + ".md";
-        
         binding.tvLog.append("开始识别字幕...\n");
         binding.tvLog.append("视频路径: " + videoPath + "\n");
-        binding.tvLog.append("输出路径: " + mdOutputPath + "\n");
         
-        autoCutManager.recognizeSubtitles(videoPath, mdOutputPath, new AutoCutManager.RecognitionCallback() {
+        autoCutManager.recognizeSubtitles(videoPath, "", new AutoCutManager.RecognitionCallback() {
             @Override
             public void onProgress(int progress, String message) {
                 runOnUiThread(() -> {

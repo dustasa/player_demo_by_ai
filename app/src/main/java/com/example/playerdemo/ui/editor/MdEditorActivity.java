@@ -43,7 +43,21 @@ public class MdEditorActivity extends AppCompatActivity {
 
         videoPath = getIntent().getStringExtra("video_path");
         videoName = getIntent().getStringExtra("video_name");
-        mdPath = getIntent().getStringExtra("md_path");
+//        mdPath = getIntent().getStringExtra("md_path");
+        mdPath = videoPath;
+
+        // 逻辑修改：将视频路径后缀替换为 .md
+        if (videoPath != null) {
+            // 找到最后一个点号的位置
+            int lastDotIndex = videoPath.lastIndexOf(".");
+            if (lastDotIndex != -1) {
+                // 截取点号之前的部分，并拼接 .md
+                mdPath = videoPath.substring(0, lastDotIndex) + ".md";
+            } else {
+                // 如果路径里没点（不正常情况），直接加后缀
+                mdPath = videoPath + ".md";
+            }
+        }
 
         setupViews();
         loadMdFile();

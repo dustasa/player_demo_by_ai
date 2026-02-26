@@ -168,7 +168,7 @@ public class SshManager {
     }
 
     public void executeCommandWithWsl(String command, CommandCallback callback) {
-        String wslCommand = "wsl -d Ubuntu-22.04 " + command;
+        String wslCommand = "wsl -d Ubuntu2204 " + command;
         executeCommand(wslCommand, callback);
     }
 
@@ -309,6 +309,13 @@ public class SshManager {
     public String readRemoteFile(String remotePath) {
         if (!isConnected.get() || sftpChannel == null) {
             return null;
+        }
+
+        // 修复路径格式：如果以 "/" 开头且第二个字符是盘符，去掉开头的 "/"
+        // 目标：将 "/F:/video.mov" 变成 "F:/video.mov"
+        String fixedPath = remotePath;
+        if (fixedPath.startsWith("/") && fixedPath.length() > 2 && fixedPath.charAt(2) == ':') {
+            fixedPath = fixedPath.substring(1);
         }
 
         // 使用 try-with-resources 可以自动关闭流，更安全

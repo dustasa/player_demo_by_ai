@@ -69,19 +69,24 @@ public class VideoManager {
     }
 
     public static String convertToWslPath(String windowsPath) {
-        if (windowsPath == null || windowsPath.isEmpty()) {
-            return "";
+        if (windowsPath == null) return "";
+
+        // 1. 先把输入的 string 第一个 "/" 去掉（如果存在）
+        String path = windowsPath;
+        if (path.startsWith("/")) {
+            path = path.substring(1);
         }
-        
-        String path = windowsPath.trim();
-        
-        if (path.matches("^[A-Za-z]:/.*")) {
-            char driveLetter = Character.toLowerCase(path.charAt(0));
-            String remaining = path.substring(2);
-            return "/mnt/" + driveLetter + remaining.replace("\\", "/");
+
+        // 2. 将反斜杠换成正斜杠
+        path = path.replace("\\", "/");
+
+        // 3. 处理盘符 (例如 F:/ 变 /mnt/f/)
+        if (path.length() >= 2 && path.charAt(1) == ':') {
+            String drive = String.valueOf(path.charAt(0)).toLowerCase();
+            path = "/mnt/" + drive + path.substring(2);
         }
-        
-        return path.replace("\\", "/");
+
+        return path;
     }
 
     private boolean isVideoFile(String filename) {
