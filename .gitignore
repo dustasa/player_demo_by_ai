@@ -1,0 +1,53 @@
+# 1. Gradle 相关（自动生成/缓存）
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+
+# 2. Android Studio 配置
+.idea/
+*.iml
+*.ipr
+*.iws
+local.properties
+
+# 3. 操作系统临时文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 4. 构建产物
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# 5. 签名/敏感文件
+*.jks
+*.keystore
+*.properties
+!gradle.properties
+!**/src/main/**/*.properties
+
+# 6. 日志/临时文件
+*.log
+*.tmp
+*.bak
+out/
+tmp/
+
+# 7. 模拟器/测试文件
+emulator/
+test-report/
+coverage/
