@@ -1,2 +1,28 @@
+// settings.gradle
+pluginManagement {
+    repositories {
+        // 优先配置 Google 插件仓库（AGP 插件在这里）
+        google()
+        // Gradle 中央仓库（兜底）
+        mavenCentral()
+        // 国内环境补充阿里云镜像（可选但推荐，避免下载失败）
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        // Gradle 官方插件仓库
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        // 国内环境补充镜像
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+    }
+}
+
 rootProject.name = "PlayerDemo"
 include ':app'
