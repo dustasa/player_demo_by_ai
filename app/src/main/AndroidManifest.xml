@@ -43,6 +43,12 @@
             android:name=".ui.editor.MdEditorActivity"
             android:exported="false"
             android:theme="@style/Theme.PlayerDemo" />
+        <activity
+            android:name=".ui.recognition.RecognitionActivity"
+            android:exported="false"
+            android:screenOrientation="fullSensor"
+            android:windowSoftInputMode="adjustResize" />
+
     </application>
 
 </manifest>

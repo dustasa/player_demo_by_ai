@@ -39,12 +39,12 @@ public class AutoCutManager {
 
     public void recognizeSubtitles(String videoPath, String outputPath, RecognitionCallback callback) {
         String wslVideoPath = VideoManager.convertToWslPath(videoPath);
-        String wslOutputPath = VideoManager.convertToWslPath(outputPath);
+
+//        String wslOutputPath = VideoManager.convertToWslPath(outputPath);
         
         String command = String.format(
-            "wsl -d Ubuntu-22.04 autocut -t \"%s\" -o \"%s\"",
-            wslVideoPath,
-            wslOutputPath
+            "wsl -d Ubuntu-22.04 autocut -t \"%s\" --device cuda --whisper-model large-v3-turbo",
+            wslVideoPath
         );
 
         final int[] lastProgress = {0};
