@@ -5,8 +5,7 @@ public class WslConfig {
     private int sshPort;
     private String username;
     private String password;
-    private int autocutPort;
-    private String wslVideoPath;
+    private String videoPath;
     private boolean autoReconnect;
 
     public WslConfig() {
@@ -14,8 +13,7 @@ public class WslConfig {
         this.sshPort = 22;
         this.username = "";
         this.password = "";
-        this.autocutPort = 8080;
-        this.wslVideoPath = "/mnt/c/Videos";
+        this.videoPath = "";
         this.autoReconnect = false;
     }
 
@@ -27,10 +25,8 @@ public class WslConfig {
     public void setUsername(String username) { this.username = username; }
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
-    public int getAutocutPort() { return autocutPort; }
-    public void setAutocutPort(int autocutPort) { this.autocutPort = autocutPort; }
-    public String getWslVideoPath() { return wslVideoPath; }
-    public void setWslVideoPath(String wslVideoPath) { this.wslVideoPath = wslVideoPath; }
+    public String getVideoPath() { return videoPath; }
+    public void setVideoPath(String videoPath) { this.videoPath = videoPath; }
     public boolean isAutoReconnect() { return autoReconnect; }
     public void setAutoReconnect(boolean autoReconnect) { this.autoReconnect = autoReconnect; }
 

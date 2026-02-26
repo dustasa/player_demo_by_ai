@@ -62,14 +62,7 @@ public class ConnectionSettingsActivity extends AppCompatActivity {
             }
         });
 
-        binding.etAutocutPort.addTextChangedListener(new SimpleTextWatcher() {
-            @Override
-            public void afterTextChanged(Editable s) {
-                validateInput();
-            }
-        });
-
-        binding.etWslVideoPath.addTextChangedListener(new SimpleTextWatcher() {
+        binding.etVideoPath.addTextChangedListener(new SimpleTextWatcher() {
             @Override
             public void afterTextChanged(Editable s) {
                 validateInput();
@@ -98,8 +91,7 @@ public class ConnectionSettingsActivity extends AppCompatActivity {
             binding.etSshPort.setText(String.valueOf(config.getSshPort()));
             binding.etUsername.setText(config.getUsername());
             binding.etPassword.setText(config.getPassword());
-            binding.etAutocutPort.setText(String.valueOf(config.getAutocutPort()));
-            binding.etWslVideoPath.setText(config.getWslVideoPath());
+            binding.etVideoPath.setText(config.getVideoPath());
             binding.switchAutoReconnect.setChecked(config.isAutoReconnect());
         }
     }
@@ -114,12 +106,7 @@ public class ConnectionSettingsActivity extends AppCompatActivity {
         }
         config.setUsername(binding.etUsername.getText().toString().trim());
         config.setPassword(binding.etPassword.getText().toString().trim());
-        try {
-            config.setAutocutPort(Integer.parseInt(binding.etAutocutPort.getText().toString().trim()));
-        } catch (NumberFormatException e) {
-            config.setAutocutPort(8080);
-        }
-        config.setWslVideoPath(binding.etWslVideoPath.getText().toString().trim());
+        config.setVideoPath(binding.etVideoPath.getText().toString().trim());
         config.setAutoReconnect(binding.switchAutoReconnect.isChecked());
         
         configManager.saveWslConfig(config);
@@ -225,7 +212,7 @@ public class ConnectionSettingsActivity extends AppCompatActivity {
 
     private void showHelpDialog() {
         String helpText = "配置指引：\n\n" +
-            "1. 在Windows端确保SSH服务已开启\n" +
+            "1. 在Windows端确保SSH服务已开启（默认端口22）\n" +
             "2. 在Windows防火墙中允许SSH端口\n" +
             "3. 确保WSL2已安装并配置好Ubuntu-22.04\n" +
             "4. 在WSL中安装AutoCut工具\n\n" +

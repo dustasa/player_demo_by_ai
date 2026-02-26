@@ -1,17 +1,12 @@
 package com.example.playerdemo.data.repository;
 
-import android.annotation.SuppressLint;
-
 import com.example.playerdemo.data.model.VideoFile;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.ChannelSftp.LsEntry;
-import com.example.playerdemo.data.model.WslConfig;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class VideoManager {
     private static VideoManager instance;
@@ -47,9 +42,12 @@ public class VideoManager {
                         String filename = entry.getFilename();
                         if (!filename.startsWith(".") && isVideoFile(filename)) {
                             long size = entry.getAttrs().getSize();
+                            String fullPath = remotePath.endsWith("/") 
+                                ? remotePath + filename 
+                                : remotePath + "/" + filename;
                             VideoFile video = new VideoFile(
                                 filename,
-                                remotePath + "/" + filename,
+                                fullPath,
                                 size,
                                 "",
                                 true
@@ -70,17 +68,20 @@ public class VideoManager {
         }).start();
     }
 
-    @SuppressLint("DefaultLocale")
-    public String getVideoStreamUrl(VideoFile video) {
-        SshManager sshManager = SshManager.getInstance();
-        WslConfig config = sshManager.getCurrentConfig();
-        if (config == null) return null;
-
-        return String.format("smb://%s:%d%s",
-            config.getWindowsHost(),
-            config.getSshPort(),
-            video.getPath().replace("/mnt/c/", "/")
-        );
+    public static String convertToWslPath(String windowsPath) {
+        if (windowsPath == null || windowsPath.isEmpty()) {
+            return "";
+        }
+        
+        String path = windowsPath.trim();
+        
+        if (path.matches("^[A-Za-z]:/.*")) {
+            char driveLetter = Character.toLowerCase(path.charAt(0));
+            String remaining = path.substring(2);
+            return "/mnt/" + driveLetter + remaining.replace("\\", "/");
+        }
+        
+        return path.replace("\\", "/");
     }
 
     private boolean isVideoFile(String filename) {
@@ -91,13 +92,5 @@ public class VideoManager {
             }
         }
         return false;
-    }
-
-    public String getFileExtension(String filename) {
-        int lastDot = filename.lastIndexOf('.');
-        if (lastDot > 0 && lastDot < filename.length() - 1) {
-            return filename.substring(lastDot + 1).toLowerCase();
-        }
-        return "";
     }
 }

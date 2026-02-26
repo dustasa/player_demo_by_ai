@@ -66,7 +66,7 @@ public class CutActivity extends AppCompatActivity {
         updateUIState(true);
         
         String baseName = videoName.substring(0, videoName.lastIndexOf('.'));
-        String outputDir = configManager.getWslConfig().getWslVideoPath();
+        String outputDir = configManager.getWslConfig().getVideoPath();
         outputPath = outputDir + "/" + baseName + "_edited.mp4";
         
         binding.tvLog.append("开始视频剪辑...\n");

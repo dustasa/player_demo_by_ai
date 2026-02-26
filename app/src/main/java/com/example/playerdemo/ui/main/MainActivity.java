@@ -40,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private VideoManager videoManager;
     private VideoListAdapter adapter;
     private boolean showingLocalVideos = false;
+    private boolean isConnecting = false;
 
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
@@ -68,8 +69,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         updateConnectionStatus();
-        if (sshManager.isConnected()) {
+        if (isConnecting) {
+            return;
+        }
+        if (sshManager.isConnected() && !showingLocalVideos) {
             loadRemoteVideos();
+        } else if (!sshManager.isConnected() && !showingLocalVideos) {
+            showNotConnectedTip();
         }
     }
 
@@ -146,20 +152,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void connectToWsl() {
+        isConnecting = true;
         showConnecting();
 
         sshManager.connect(configManager.getWslConfig(), new SshManager.ConnectionCallback() {
             @Override
             public void onSuccess() {
                 runOnUiThread(() -> {
+                    isConnecting = false;
                     updateConnectionStatus();
-                    loadRemoteVideos();
+                    if (!showingLocalVideos) {
+                        loadRemoteVideos();
+                    }
                 });
             }
 
             @Override
             public void onFailure(String error) {
                 runOnUiThread(() -> {
+                    isConnecting = false;
                     updateConnectionStatus();
                     showConnectionError(error);
                 });
@@ -187,7 +198,7 @@ public class MainActivity extends AppCompatActivity {
         binding.progressBar.setVisibility(View.VISIBLE);
         binding.tvEmpty.setVisibility(View.GONE);
 
-        String videoPath = configManager.getWslConfig().getWslVideoPath();
+        String videoPath = configManager.getWslConfig().getVideoPath();
         videoManager.getRemoteVideos(videoPath, new VideoManager.VideoListCallback() {
             @Override
             public void onSuccess(List<VideoFile> videos) {
@@ -211,7 +222,8 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     binding.progressBar.setVisibility(View.GONE);
                     binding.swipeRefresh.setRefreshing(false);
-                    binding.tvEmpty.setText(error);
+//                    binding.tvEmpty.setText(error);
+                    binding.tvEmpty.setText("连接失败，请检查连接");
                     binding.tvEmpty.setVisibility(View.VISIBLE);
                 });
             }

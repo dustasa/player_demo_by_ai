@@ -38,10 +38,13 @@ public class AutoCutManager {
     }
 
     public void recognizeSubtitles(String videoPath, String outputPath, RecognitionCallback callback) {
+        String wslVideoPath = VideoManager.convertToWslPath(videoPath);
+        String wslOutputPath = VideoManager.convertToWslPath(outputPath);
+        
         String command = String.format(
             "wsl -d Ubuntu-22.04 autocut -t \"%s\" -o \"%s\"",
-            videoPath,
-            outputPath
+            wslVideoPath,
+            wslOutputPath
         );
 
         final int[] lastProgress = {0};
@@ -82,11 +85,15 @@ public class AutoCutManager {
     }
 
     public void cutVideo(String videoPath, String mdPath, String outputPath, CutCallback callback) {
+        String wslVideoPath = VideoManager.convertToWslPath(videoPath);
+        String wslMdPath = VideoManager.convertToWslPath(mdPath);
+        String wslOutputPath = VideoManager.convertToWslPath(outputPath);
+        
         String command = String.format(
             "wsl -d Ubuntu-22.04 autocut -c \"%s\" -s \"%s\" -o \"%s\"",
-            videoPath,
-            mdPath,
-            outputPath
+            wslVideoPath,
+            wslMdPath,
+            wslOutputPath
         );
 
         final int[] lastProgress = {0};

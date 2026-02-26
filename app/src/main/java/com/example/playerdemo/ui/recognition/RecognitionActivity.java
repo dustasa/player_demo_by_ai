@@ -65,7 +65,7 @@ public class RecognitionActivity extends AppCompatActivity {
         updateUIState(true);
         
         WslConfig config = configManager.getWslConfig();
-        String videoDir = config.getWslVideoPath();
+        String videoDir = config.getVideoPath();
         String baseName = videoName.substring(0, videoName.lastIndexOf('.'));
         mdOutputPath = videoDir + "/" + baseName + ".md";
         

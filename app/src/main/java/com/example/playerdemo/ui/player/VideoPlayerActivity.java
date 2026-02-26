@@ -12,17 +12,13 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.example.playerdemo.data.repository.ConfigManager;
 import com.example.playerdemo.data.repository.SshManager;
+import com.example.playerdemo.data.repository.VideoManager;
 import com.example.playerdemo.databinding.ActivityVideoPlayerBinding;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.PlaybackParameters;
 import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultDataSource;
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 
 public class VideoPlayerActivity extends AppCompatActivity {
     private ActivityVideoPlayerBinding binding;
@@ -101,30 +97,54 @@ public class VideoPlayerActivity extends AppCompatActivity {
     }
 
     private void loadRemoteVideo() {
-        SshManager sshManager = SshManager.getInstance();
-        
-        String videoStreamUrl = "http://" + 
-                sshManager.getCurrentConfig().getWindowsHost() + 
-                ":8080" + videoPath.replace("/mnt/c/", "/").replace(" ", "%20");
-        
-        DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory()
-                .setAllowCrossProtocolRedirects(true)
-                .setConnectTimeoutMs(10000)
-                .setReadTimeoutMs(10000);
-        
-        DataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(this, httpDataSourceFactory);
-
-        ProgressiveMediaSource mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(MediaItem.fromUri(Uri.parse(videoStreamUrl))); // Fix: Use MediaItem.fromUri()
-        
-        player.setMediaSource(mediaSource);
-        player.prepare();
-        
-        if (startTime != null && !startTime.isEmpty()) {
-            seekToTime(startTime);
+        if (!isRemote) {
+            loadLocalVideo();
+            return;
         }
         
-        player.play();
+        SshManager sshManager = SshManager.getInstance();
+        
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("远程播放提示");
+        builder.setMessage("远程视频需要先下载到本地，是否下载？\n\n文件路径: " + videoPath);
+        builder.setPositiveButton("下载并播放", (dialog, which) -> {
+            downloadAndPlay(videoPath);
+        });
+        builder.setNegativeButton("取消", (dialog, which) -> finish());
+        builder.show();
+    }
+    
+    private void downloadAndPlay(String remotePath) {
+        binding.progressBar.setVisibility(View.VISIBLE);
+        
+        new Thread(() -> {
+            SshManager sshManager = SshManager.getInstance();
+            java.io.File cacheDir = getCacheDir();
+            java.io.File tempFile = new java.io.File(cacheDir, videoName);
+            
+            String wslPath = VideoManager.convertToWslPath(remotePath);
+            
+            sshManager.downloadFile(wslPath, tempFile.getAbsolutePath(), new SshManager.ProgressCallback() {
+                @Override
+                public void onProgress(int progress, String message) {
+                    runOnUiThread(() -> {
+                        binding.progressBar.setProgress(progress);
+                    });
+                }
+            });
+            
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException ignored) {}
+            
+            final java.io.File finalFile = tempFile;
+            runOnUiThread(() -> {
+                binding.progressBar.setVisibility(View.GONE);
+                videoPath = finalFile.getAbsolutePath();
+                isRemote = false;
+                loadLocalVideo();
+            });
+        }).start();
     }
 
     private void loadLocalVideo() {
